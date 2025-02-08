@@ -4,3 +4,10 @@ fastapi
 pydantic
 qdrant-client
 uvicorn
+
+
+
+
+
+
+

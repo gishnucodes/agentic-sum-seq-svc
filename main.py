@@ -1,13 +1,17 @@
+from crewai.cli.cli import crewai
 from fastapi import FastAPI, HTTPException
 from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from crewai import Agent, Task, Crew, LLM
+import logging
+
+from starlette.responses import JSONResponse
 
 ## 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
 # Initialize FastAPI app
 
-GROQ_API_KEY="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"  # On Windows use `set GROQ_API_KEY=your_api_key_here`
+GROQ_API_KEY="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"  # On Windows use `set GROQ_API_KEY=your_api_key_here`
 
 app = FastAPI()
 
@@ -19,7 +23,7 @@ CORSMiddleware(app, allow_origins=origins, allow_credentials=True, allow_methods
 
 
 # Initialize Groq LLM
-llm = LLM(model="groq/llama-3.3-70b-versatile", api_key='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')
+llm = LLM(model="groq/llama-3.3-70b-versatile", api_key='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')
 
 
 # Define request model
@@ -81,25 +85,75 @@ combine_task = Task(
 
 
 # API Endpoint
-@app.post("/api/process", tags=["Document Processing"], summary="Process and summarize document")
-def process_document(request: DocumentRequest):
+# @app.post("/api/process", tags=["Document Processing"], summary="Process and summarize document",)
+# def process_document(request):
+#     """
+#     Takes a raw text document, segments it into sections, summarizes it, and combines results.
+#     """
+#     print(request.text)
+#     try:
+#         if not request.text:
+#             raise HTTPException(status_code=400, detail="Text input is empty")
+#         if len(request.text) > 10000:
+#             raise HTTPException(status_code=400, detail="Text input is too long")
+#
+#         # Create Crew and execute workflow
+#         crew = Crew(
+#             agents=[segregator, summarizer, combiner],
+#             tasks=[segregation_task, summary_task, combine_task],
+#             verbose=True
+#         )
+#         print(request)
+#         result = crew.kickoff(inputs={f"input": f"{request.text}"})
+#         print(result.raw)
+#         return result.raw
+#     except ValueError as e:
+#         logging.error(f"ValueError: {e}")
+#         raise HTTPException(status_code=400, detail="Invalid input data")
+#     except Exception as e:
+#         logging.exception(f"Unexpected error: {e}")
+#         raise HTTPException(status_code=500, detail="An unexpected error occurred")
+
+from fastapi import FastAPI, HTTPException, Body
+import logging
+
+app = FastAPI()
+
+@app.post("/api/process", summary="Process and summarize document")
+async def process_document(text: str = Body(..., embed=True)):
     """
     Takes a raw text document, segments it into sections, summarizes it, and combines results.
     """
+    logging.info(f"Received text: {text}")
     try:
+        if not text:
+            raise HTTPException(status_code=400, detail="Text input is empty")
+        if len(text) > 10000:
+            raise HTTPException(status_code=400, detail="Text input is too long")
+
         # Create Crew and execute workflow
         crew = Crew(
             agents=[segregator, summarizer, combiner],
             tasks=[segregation_task, summary_task, combine_task],
             verbose=True
         )
-        print(request)
-        result = crew.kickoff(inputs={f"input": f"{request.text}"})
-        print(result.raw)
+        result = crew.kickoff(inputs={"input": text})
         return result.raw
+    except ValueError as e:
+        logging.error(f"ValueError: {e}")
+        raise HTTPException(status_code=400, detail="Invalid input data")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logging.exception(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
 
+@app.post("/api/map", tags=["Document Processing"], summary="Process and summarize document",)
+def process_document(request: DocumentRequest):
+    """
+    Takes a raw text document, segments it into sections, summarizes it, and combines results.
+    """
+    # print(request)
+    if not request.text:
+        raise HTTPException(status_code=400, detail="Text input is empty")
 
 # Swagger UI Configuration
 @app.get("/openapi.json", include_in_schema=False)
