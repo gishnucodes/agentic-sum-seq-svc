@@ -3,4 +3,4 @@ crewai
 fastapi
 pydantic
 qdrant-client
-gunicorn
+uvicorn
